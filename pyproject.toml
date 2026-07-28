@@ -1,0 +1,27 @@
+[project]
+name = "campus-mcp"
+version = "0.1.0"
+description = "Unofficial MCP server for the Campus Coach training platform"
+readme = "README.md"
+authors = [
+    { name = "Jorick Pepin", email = "jorick.pepin@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "aiohttp>=3.12",
+    "certifi>=2025.1.31",
+    "mcp[cli]>=1.9",
+]
+
+[project.scripts]
+campus-mcp = "campus_mcp.server:main"
+
+[build-system]
+requires = ["uv_build>=0.11.32,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+]

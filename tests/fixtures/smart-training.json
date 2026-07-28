@@ -1,0 +1,202 @@
+[
+    {
+        "userId": "000000000000000000000000",
+        "_id": "111111111111111111111111",
+        "articles": ["fakeArticleId1", "fakeArticleId2"],
+        "weekDate": 1780272000000,
+        "context": {
+            "priority": "performance",
+            "backgroundGoal": "endurance",
+            "goalId": "222222222222222222222222",
+            "cycleTheme": "S60_Cote",
+            "cycleDescription": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+            "isStatic": false
+        },
+        "estimatedPaces": [
+            {"slug": "ef", "value": 328.0, "dvalue": 20.1, "abstract": false, "competitive": false},
+            {"slug": "tempo", "value": 297.1, "dvalue": 16.5, "abstract": false, "competitive": false},
+            {"slug": "seuil60", "value": 248.0, "dvalue": 11.3, "abstract": false, "competitive": false},
+            {"slug": "seuil30", "value": 234.3, "dvalue": 9.9, "abstract": false, "competitive": false},
+            {"slug": "vma", "value": 202.2, "dvalue": 7.0, "abstract": false, "competitive": false},
+            {"slug": "marathon", "value": 294.6, "dvalue": 13.9, "abstract": false, "competitive": true},
+            {
+                "slug": "race",
+                "value": 534,
+                "dvalue": 16.1,
+                "abstract": false,
+                "competitive": true,
+                "race": {
+                    "distance": 55,
+                    "elevation": 2800,
+                    "goalId": "222222222222222222222222",
+                    "timeLowerBound": 29346,
+                    "timeUpperBound": 35216
+                }
+            }
+        ],
+        "sessions": [
+            {
+                "_t": "SmartTrailV2SessionWithStats",
+                "sport": "trailV2",
+                "name": "EF_20",
+                "description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Footing description placeholder that must never reach the LLM.",
+                "displayName": "Endurance Fondamentale",
+                "coachAdvice": "Lorem ipsum coach advice placeholder that must never reach the LLM.",
+                "test": false,
+                "importance": false,
+                "trainingType": "EF",
+                "trainingCategory": "trail_basic_endurance",
+                "exercisesBlocks": [
+                    {
+                        "repeat": 1,
+                        "exercises": [
+                            {
+                                "_t": "SmartTrailV2Exercise",
+                                "name": "EF_20",
+                                "exerciseType": "running",
+                                "pace": {
+                                    "name": "Endurance Fondamentale",
+                                    "value": 328,
+                                    "kind": "abstract",
+                                    "zoneKind": "Z2",
+                                    "abstract": true,
+                                    "slug": "endurance-fondamentale",
+                                    "context": "pace",
+                                    "perception": "comfortable"
+                                },
+                                "durations": [{"value": 20, "timeUnit": "minutes"}],
+                                "terrainIncline": "indifferent",
+                                "manualLap": false
+                            }
+                        ]
+                    }
+                ],
+                "difficulty": 1,
+                "racingNote": {
+                    "_t": "SmartTrailV2RacingNote",
+                    "name": "Fake evening run",
+                    "source": "strava",
+                    "pace": 405.4,
+                    "time": 1203,
+                    "deviceName": "Fake Watch 123",
+                    "averageRunCadenceInStepsPerMinute": 157,
+                    "externalId": "0000000000",
+                    "sessionComment": "",
+                    "completionDate": 1780474137644,
+                    "activeCalories": 200,
+                    "distance": 2.9673,
+                    "totalElevationGainInMeters": 0,
+                    "sessionRating": 0,
+                    "averageHeartRateInBeatsPerMinute": 131
+                },
+                "trainingIndex": 0,
+                "weekDate": 1780272000000,
+                "status": "done",
+                "stats": {
+                    "_t": "SessionTrailV2ExpectedStats",
+                    "expectedDistance": 0,
+                    "expectedDuration": 1200
+                },
+                "paceZones": [
+                    {"kind": "Z2", "duration": 1200, "pace": {"value": 328}}
+                ]
+            },
+            {
+                "_t": "SmartTrailV2SessionWithStats",
+                "sport": "trailV2",
+                "name": "Recup_S60_800_Plat_3",
+                "description": "Lorem ipsum threshold session description placeholder that must never reach the LLM.",
+                "displayName": "Intensité Facile",
+                "coachAdvice": "Lorem ipsum coach advice placeholder that must never reach the LLM.",
+                "test": false,
+                "importance": true,
+                "trainingType": "Intensity",
+                "trainingCategory": "trail_intensity",
+                "exercisesBlocks": [
+                    {
+                        "repeat": 7,
+                        "exercises": [
+                            {
+                                "_t": "SmartTrailV2Exercise",
+                                "name": "S60_Plat_2",
+                                "exerciseType": "running",
+                                "pace": {
+                                    "name": "Seuil 60",
+                                    "value": 248,
+                                    "kind": "abstract",
+                                    "zoneKind": "Z4",
+                                    "abstract": false,
+                                    "slug": "seuil60",
+                                    "context": "pace",
+                                    "perception": "steady"
+                                },
+                                "durations": [{"value": 2, "timeUnit": "minutes"}],
+                                "terrainIncline": "flat",
+                                "manualLap": false
+                            }
+                        ]
+                    }
+                ],
+                "difficulty": 3,
+                "trainingIndex": 1,
+                "weekDate": 1780272000000,
+                "status": "pending",
+                "nutritionTraining": {
+                    "_id": "333333333333333333333333",
+                    "userId": "000000000000000000000000",
+                    "weekDate": 1780272000000,
+                    "sessionIndex": 1,
+                    "choRecommendation": 3,
+                    "formSuggestions": ["liquid", "semi-liquid"],
+                    "recipeOptions": {
+                        "1": {
+                            "homemade": [
+                                [
+                                    {
+                                        "datoId": "fakeRecipeId1",
+                                        "name": "Lorem ipsum recipe placeholder",
+                                        "form": "liquid",
+                                        "info": {
+                                            "quantity": {"value": 700, "metric": "mL"},
+                                            "cho": {"value": 42, "metric": "g"},
+                                            "sodium": {"value": 2870, "metric": "mg"}
+                                        }
+                                    }
+                                ]
+                            ],
+                            "commercial": []
+                        }
+                    }
+                },
+                "stats": {
+                    "_t": "SessionTrailV2ExpectedStats",
+                    "expectedDistance": 0,
+                    "expectedDuration": 3480
+                },
+                "paceZones": [
+                    {"kind": "Z2", "duration": 1200, "pace": {"value": 328}},
+                    {"kind": "Z4", "duration": 120, "pace": {"value": 248}},
+                    {"kind": "RECOVER", "duration": 120, "pace": {"value": 342}},
+                    {"kind": "Z4", "duration": 120, "pace": {"value": 248}},
+                    {"kind": "RECOVER", "duration": 720, "pace": {"value": 328}}
+                ]
+            }
+        ],
+        "weekStats": {
+            "expectedDistance": 0,
+            "realDistance": 46.95,
+            "expectedDuration": 16980,
+            "realDuration": 18593
+        },
+        "exportStatus": "OK",
+        "goalDuration": {
+            "durationInWeeks": 18,
+            "index": 12
+        },
+        "coach": {
+            "name": "Fake Coach",
+            "image": "https://example.com/fake-coach.png"
+        },
+        "access": "allowed"
+    }
+]
