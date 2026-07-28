@@ -7,6 +7,8 @@ from typing import Any
 import aiohttp
 import certifi
 
+from campus_mcp.auth import TokenStore
+
 BASE_URL = "https://api.campus.coach"
 
 
@@ -17,13 +19,21 @@ class CampusAuthError(Exception):
 class CampusClient:
     """Wraps aiohttp.ClientSession to handle Bearer auth and 401 replay.
 
-    No preemptive expiry checks: requests are sent with the current token and
-    replayed once after a refresh if the API answers 401.
+    Auth comes from email/password (preferred when both are given) or from a
+    TokenStore holding a previously saved token pair. No preemptive expiry
+    checks: requests are sent with the current token and replayed once after
+    a refresh if the API answers 401.
     """
 
-    def __init__(self, email: str, password: str) -> None:
+    def __init__(
+        self,
+        email: str | None = None,
+        password: str | None = None,
+        token_store: TokenStore | None = None,
+    ) -> None:
         self._email = email
         self._password = password
+        self._store = token_store
         self._token: str | None = None
         self._refresh_token: str | None = None
         self._session: aiohttp.ClientSession | None = None
@@ -39,7 +49,7 @@ class CampusClient:
         if self._token is None:
             async with self._auth_lock:
                 if self._token is None:
-                    await self._login(session)
+                    await self._authenticate(session)
 
         token_used = self._token
         async with session.get(
@@ -76,6 +86,21 @@ class CampusClient:
     def _headers(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self._token}"}
 
+    async def _authenticate(self, session: aiohttp.ClientSession) -> None:
+        if self._email and self._password:
+            await self._login(session)
+            return
+        if self._store is not None:
+            tokens = self._store.load()
+            if tokens is not None:
+                self._token = tokens["token"]
+                self._refresh_token = tokens["refreshToken"]
+                return
+        raise CampusAuthError(
+            "No credentials and no saved tokens: run campus-mcp-auth once, "
+            "or set CAMPUS_EMAIL and CAMPUS_PASSWORD"
+        )
+
     async def _login(self, session: aiohttp.ClientSession) -> None:
         async with session.post(
             f"{BASE_URL}/account/login",
@@ -88,15 +113,34 @@ class CampusClient:
             self._store_tokens(await resp.json())
 
     async def _refresh(self, session: aiohttp.ClientSession) -> None:
+        rejected_refresh_token = self._refresh_token
         async with session.put(
             f"{BASE_URL}/account/refresh-token/{self._refresh_token}"
         ) as resp:
-            if resp.status >= 400:
-                # Refresh token expired or revoked: fall back to a full login.
-                await self._login(session)
+            if resp.status < 400:
+                self._store_tokens(await resp.json())
                 return
-            self._store_tokens(await resp.json())
+
+        # Refresh token expired or revoked: fall back to a full login.
+        if self._email and self._password:
+            await self._login(session)
+            return
+
+        # Token-store mode: a sibling server process (each MCP client spawns
+        # its own) may have rotated the tokens on disk since we loaded ours.
+        if self._store is not None:
+            tokens = self._store.load()
+            if tokens is not None and tokens["refreshToken"] != rejected_refresh_token:
+                self._token = tokens["token"]
+                self._refresh_token = tokens["refreshToken"]
+                return
+
+        raise CampusAuthError(
+            "Saved tokens were rejected: run campus-mcp-auth to re-authenticate"
+        )
 
     def _store_tokens(self, payload: dict[str, Any]) -> None:
         self._token = payload["token"]
         self._refresh_token = payload["refreshToken"]
+        if self._store is not None:
+            self._store.save(self._token, self._refresh_token)

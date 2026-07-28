@@ -18,17 +18,19 @@ The raw API responses are aggressively pruned (nutrition recipes, coach advice, 
 
 ## Setup (one time)
 
-There is no server to start or keep running: your MCP client (Claude Desktop, Claude Code, ...) spawns it automatically in the background when a conversation needs it, and stops it when you quit. You only need to install it and tell your client where it is.
+There is no server to start or keep running: your MCP client (Claude Desktop, Claude Code, ...) spawns it automatically in the background when a conversation needs it, and stops it when you quit. No need to clone anything either: [uv](https://docs.astral.sh/uv/) installs and runs the server straight from GitHub (and fetches a suitable Python if needed).
 
-Requires [uv](https://docs.astral.sh/uv/) (it will fetch a suitable Python if needed).
-
-**1. Get the code:**
+**1. Authenticate:**
 
 ```bash
-git clone https://github.com/jorickpepin/campus-mcp.git
+uvx --from git+https://github.com/JorickPepin/campus-mcp campus-mcp-auth
 ```
 
-**2. Register it in your MCP client**, with your Campus account credentials as environment variables.
+You'll be prompted for your Campus email and password. They are only used to log in: what gets saved to `~/.campus-mcp/tokens.json` is the API token pair, which the server refreshes on its own afterwards. Your password never touches the disk or your MCP client config.
+
+To check later that the saved tokens still work: `campus-mcp-auth --verify`.
+
+**2. Register the server in your MCP client** — no credentials needed:
 
 ### Claude Desktop
 
@@ -38,12 +40,8 @@ In `claude_desktop_config.json`:
 {
   "mcpServers": {
     "campus": {
-      "command": "uv",
-      "args": ["run", "--directory", "/path/to/campus-mcp", "campus-mcp"],
-      "env": {
-        "CAMPUS_EMAIL": "you@example.com",
-        "CAMPUS_PASSWORD": "your-password"
-      }
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/JorickPepin/campus-mcp", "campus-mcp"]
     }
   }
 }
@@ -52,13 +50,32 @@ In `claude_desktop_config.json`:
 ### Claude Code
 
 ```bash
-claude mcp add campus -e CAMPUS_EMAIL=you@example.com -e CAMPUS_PASSWORD=your-password \
-  -- uv run --directory /path/to/campus-mcp campus-mcp
+claude mcp add campus -- uvx --from git+https://github.com/JorickPepin/campus-mcp campus-mcp
 ```
 
 ### VS Code (GitHub Copilot)
 
-Copilot's agent mode picks up MCP servers from `.vscode/mcp.json` (per project) or your user-level `mcp.json` (run **MCP: Open User Configuration** from the command palette). The `inputs` block makes VS Code prompt for your credentials on first use and store them securely, instead of leaving them in plain text:
+Copilot's agent mode picks up MCP servers from `.vscode/mcp.json` (per project) or your user-level `mcp.json` (run **MCP: Open User Configuration** from the command palette):
+
+```json
+{
+  "servers": {
+    "campus": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/JorickPepin/campus-mcp", "campus-mcp"]
+    }
+  }
+}
+```
+
+### Other clients
+
+Any MCP client that supports **stdio** servers (Cursor, Windsurf, LM Studio, ...) works the same way: command `uvx`, args `--from git+https://github.com/JorickPepin/campus-mcp campus-mcp`.
+
+### Alternative: credentials as environment variables
+
+If you'd rather not keep tokens on disk (or you juggle several Campus accounts), skip `campus-mcp-auth` and pass `CAMPUS_EMAIL` and `CAMPUS_PASSWORD` in the server's `env` block instead. When both are set they take precedence over the token file, and the token file is left untouched. In VS Code you can avoid plain-text credentials with an `inputs` block, which prompts on first use and stores them securely:
 
 ```json
 {
@@ -69,8 +86,8 @@ Copilot's agent mode picks up MCP servers from `.vscode/mcp.json` (per project) 
   "servers": {
     "campus": {
       "type": "stdio",
-      "command": "uv",
-      "args": ["run", "--directory", "/path/to/campus-mcp", "campus-mcp"],
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/JorickPepin/campus-mcp", "campus-mcp"],
       "env": {
         "CAMPUS_EMAIL": "${input:campus-email}",
         "CAMPUS_PASSWORD": "${input:campus-password}"
@@ -79,10 +96,6 @@ Copilot's agent mode picks up MCP servers from `.vscode/mcp.json` (per project) 
   }
 }
 ```
-
-### Other clients
-
-Any MCP client that supports **stdio** servers (Cursor, Windsurf, LM Studio, ...) works the same way: command `uv`, args `run --directory /path/to/campus-mcp campus-mcp`, plus the two `CAMPUS_*` environment variables.
 
 ## Example prompts
 
@@ -99,12 +112,27 @@ Any MCP client that supports **stdio** servers (Cursor, Windsurf, LM Studio, ...
   - 🇫🇷 *"Analyse ma sortie longue du week-end et ajoute la nutrition nécessaire à ma liste de courses."*
   - 🇬🇧 *"Analyze my weekend long run and add the nutrition I need to my grocery list."*
 
+## Troubleshooting
+
+**"Failed to spawn process: No such file or directory"** — your MCP client can't find `uvx` because it doesn't inherit your shell's `PATH`. Run `which uvx` and put the full path (e.g. `/Users/you/.local/bin/uvx`) in the `command` field.
+
+**"Saved tokens were rejected"** — the refresh token expired or was revoked (e.g. you logged out everywhere). Re-run `campus-mcp-auth`.
+
+**Slow first start** — the first `uvx` invocation downloads and caches the package; later starts are instant. To pick up a new version of this server, run `uv cache prune` or reinstall.
+
+**Logs** — Claude Desktop writes the server's stderr to `~/Library/Logs/Claude/mcp-server-campus.log` (macOS) or `%APPDATA%\Claude\logs\` (Windows).
+
 ## Development
 
+Work from a clone and point your MCP client at it instead of GitHub: command `uv`, args `run --directory /path/to/campus-mcp campus-mcp`.
+
 ```bash
-uv run pytest                                # unit tests on the JSON pruning
-uv run mcp dev src/campus_mcp/server.py      # MCP Inspector (needs CAMPUS_* env vars)
+uv run pytest                                # unit tests (JSON pruning, token store)
+uv run campus-mcp-auth                       # local auth (or --verify)
+uv run mcp dev src/campus_mcp/server.py      # MCP Inspector
 ```
+
+The token file location can be overridden with the `CAMPUS_TOKEN_FILE` environment variable (handy for testing against a second account).
 
 ## License
 

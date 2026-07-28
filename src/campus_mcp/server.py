@@ -8,6 +8,7 @@ from typing import Any
 
 from mcp.server.fastmcp import Context, FastMCP
 
+from campus_mcp.auth import TokenStore
 from campus_mcp.client import CampusClient
 from campus_mcp.transform import (
     DAY_MS,
@@ -31,11 +32,20 @@ class AppContext:
 async def lifespan(_server: FastMCP) -> AsyncGenerator[AppContext]:
     email = os.environ.get("CAMPUS_EMAIL")
     password = os.environ.get("CAMPUS_PASSWORD")
-    if not email or not password:
-        raise RuntimeError(
-            "CAMPUS_EMAIL and CAMPUS_PASSWORD environment variables are required"
-        )
-    client = CampusClient(email, password)
+    if email and password:
+        # Credentials mode: don't touch the token file, so a session
+        # configured for another account can't clobber the saved tokens.
+        client = CampusClient(email=email, password=password)
+    else:
+        store = TokenStore()
+        if store.load() is None:
+            raise RuntimeError(
+                f"No saved tokens at {store.path} and no CAMPUS_EMAIL/"
+                "CAMPUS_PASSWORD set. Run `uvx --from "
+                "git+https://github.com/JorickPepin/campus-mcp "
+                "campus-mcp-auth` once, or set both environment variables."
+            )
+        client = CampusClient(token_store=store)
     try:
         yield AppContext(client=client)
     finally:
