@@ -1,6 +1,6 @@
-# campus-mcp
+# Campus Coach MCP Server
 
-Unofficial [MCP](https://modelcontextprotocol.io) server for the [Campus Coach](https://www.campus.coach) running/trail training platform. It lets any MCP client (Claude Desktop, Claude Code, ...) read your training plan, your pace references and your athlete profile — heavily filtered so the LLM only sees what matters.
+Unofficial [MCP](https://modelcontextprotocol.io) server for the [Campus Coach](https://www.campus.coach) running/trail training platform. It lets any MCP client (Claude Desktop, Claude Code, ...) read your training plan, your pace references and your athlete profile.
 
 > [!WARNING]
 >
@@ -90,7 +90,7 @@ Any MCP client that supports **stdio** servers (Cursor, Windsurf, LM Studio, ...
   - 🇫🇷 *"Croise mon plan Campus de cette semaine avec mes activités Strava réelles. Est-ce que j'ai respecté mes allures cibles ?"*
   - 🇬🇧 *"Cross-check this week's Campus plan against my actual Strava activities. Did I hit my target paces?"*
 - **Smart scheduling** — combine with calendar + weather tools.
-  - 🇫🇷 *"Planifie mes séances Campus de la semaine dans mon agenda, en évitant la pluie et les les créneaux déjà occupés."*
+  - 🇫🇷 *"Planifie mes séances Campus de la semaine dans mon agenda, en évitant la pluie et les créneaux déjà occupés."*
   - 🇬🇧 *"Schedule this week's Campus sessions in my calendar, avoiding rain and time slots already taken."*
 - **Plan adjustment**
   - 🇫🇷 *"J'ai une tension au tendon d'Achille. Lis mon plan Campus de la semaine et dis-moi comment l'adapter."*
@@ -105,3 +105,7 @@ Any MCP client that supports **stdio** servers (Cursor, Windsurf, LM Studio, ...
 uv run pytest                                # unit tests on the JSON pruning
 uv run mcp dev src/campus_mcp/server.py      # MCP Inspector (needs CAMPUS_* env vars)
 ```
+
+## License
+
+MIT, see [LICENSE](LICENSE). Not affiliated with, endorsed by, or supported by Campus Coach.
