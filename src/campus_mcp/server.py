@@ -4,9 +4,10 @@ import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from importlib.metadata import version as pkg_version
 from typing import Any
 
-from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.mcpserver import Context, MCPServer
 
 from campus_mcp.auth import TokenStore
 from campus_mcp.client import CampusClient
@@ -29,7 +30,7 @@ class AppContext:
 
 
 @asynccontextmanager
-async def lifespan(_server: FastMCP) -> AsyncGenerator[AppContext]:
+async def lifespan(_server: MCPServer) -> AsyncGenerator[AppContext]:
     email = os.environ.get("CAMPUS_EMAIL")
     password = os.environ.get("CAMPUS_PASSWORD")
     if email and password:
@@ -52,7 +53,7 @@ async def lifespan(_server: FastMCP) -> AsyncGenerator[AppContext]:
         await client.close()
 
 
-mcp = FastMCP("campus", lifespan=lifespan)
+mcp = MCPServer("campus", version=pkg_version("campus-mcp"), lifespan=lifespan)
 
 
 def _client(ctx: Context) -> CampusClient:
