@@ -1,5 +1,9 @@
 # Campus Coach MCP Server
 
+[![CI](https://github.com/JorickPepin/campus-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/JorickPepin/campus-mcp/actions/workflows/ci.yml)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 Unofficial [MCP](https://modelcontextprotocol.io) server for the [Campus Coach](https://www.campus.coach) running/trail training platform. It lets any MCP client (Claude Desktop, Claude Code, ...) read your training plan, your pace references and your athlete profile.
 
 > [!WARNING]
@@ -127,10 +131,17 @@ If you'd rather not keep tokens on disk (or you juggle several Campus accounts),
 Work from a clone and point your MCP client at it instead of GitHub: command `uv`, args `run --directory /path/to/campus-mcp campus-mcp`.
 
 ```bash
-uv run pytest                                # unit tests (JSON pruning, token store)
-uv run campus-mcp-auth                       # local auth (or --verify)
-uv run mcp dev src/campus_mcp/server.py      # MCP Inspector
+make install      # sync deps, including dev tooling
+make qa           # everything CI runs: format check, lint, mypy, tests
+make fmt          # format and autofix
+make test         # unit tests only (JSON pruning, token store)
+make inspector    # MCP Inspector against the local server
+make help         # all targets
 ```
+
+`make` is a convenience wrapper; every target is a plain `uv run` command if you
+prefer typing them out. Authenticate locally with `uv run campus-mcp-auth`
+(or `--verify`).
 
 The token file location can be overridden with the `CAMPUS_TOKEN_FILE` environment variable (handy for testing against a second account).
 
