@@ -25,6 +25,20 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "mypy>=1.18",
     "pytest>=9.1.1",
-    "pytest-asyncio>=1.4.0",
+    "ruff>=0.16",
 ]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "B", "SIM", "C4", "RUF", "BLE"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --strict-config"
+
+[tool.mypy]
+# Check against the lowest version requires-python promises, not the local one.
+python_version = "3.11"
+strict = true
+files = ["src"]

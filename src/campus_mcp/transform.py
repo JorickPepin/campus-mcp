@@ -1,6 +1,6 @@
 """Pure functions that strip Campus API payloads down to what an LLM needs."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 WEEK_MS = 604_800_000
@@ -10,14 +10,14 @@ DAY_MS = 86_400_000
 def iso_to_ms(date_str: str) -> int:
     """Parse an ISO date (YYYY-MM-DD) as midnight UTC, in ms."""
     try:
-        dt = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        dt = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=UTC)
     except ValueError:
         raise ValueError(f"Invalid date {date_str!r}, expected YYYY-MM-DD") from None
     return int(dt.timestamp() * 1000)
 
 
 def ms_to_iso(ms: int) -> str:
-    return datetime.fromtimestamp(ms / 1000, tz=timezone.utc).strftime("%Y-%m-%d")
+    return datetime.fromtimestamp(ms / 1000, tz=UTC).strftime("%Y-%m-%d")
 
 
 def current_week_bounds(now: datetime | None = None) -> tuple[int, int]:
@@ -25,7 +25,7 @@ def current_week_bounds(now: datetime | None = None) -> tuple[int, int]:
 
     Campus weekDate values are Mondays at 00:00 UTC.
     """
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     monday = (now - timedelta(days=now.weekday())).replace(
         hour=0, minute=0, second=0, microsecond=0
     )
@@ -42,10 +42,13 @@ def extract_profile(user_infos: dict[str, Any]) -> dict[str, Any]:
 
 
 def extract_paces(week: dict[str, Any]) -> list[dict[str, Any]]:
-    return week.get("estimatedPaces", [])
+    paces: list[dict[str, Any]] = week.get("estimatedPaces", [])
+    return paces
 
 
-def slim_session(session: dict[str, Any], *, include_zones: bool = False) -> dict[str, Any]:
+def slim_session(
+    session: dict[str, Any], *, include_zones: bool = False
+) -> dict[str, Any]:
     stats = session.get("stats", {})
     metrics: dict[str, Any] = {
         "expected_distance_km": round(stats.get("expectedDistance", 0), 2),
@@ -66,7 +69,7 @@ def slim_session(session: dict[str, Any], *, include_zones: bool = False) -> dic
             metrics["real_duration_min"] = int(note["time"] / 60)
         if "completionDate" in note:
             slim["completed_at"] = datetime.fromtimestamp(
-                note["completionDate"] / 1000, tz=timezone.utc
+                note["completionDate"] / 1000, tz=UTC
             ).strftime("%Y-%m-%dT%H:%M:%SZ")
         # Join key for the source service's own MCP/API (e.g. Strava activity
         # streams). Manual entries have no external id.

@@ -56,7 +56,7 @@ async def lifespan(_server: MCPServer) -> AsyncGenerator[AppContext]:
 mcp = MCPServer("campus", version=pkg_version("campus-mcp"), lifespan=lifespan)
 
 
-def _client(ctx: Context) -> CampusClient:
+def _client(ctx: Context[AppContext]) -> CampusClient:
     return ctx.request_context.lifespan_context.client
 
 
@@ -78,7 +78,7 @@ async def _fetch_weeks(
 
 
 @mcp.tool()
-async def get_athlete_profile(ctx: Context) -> dict[str, Any]:
+async def get_athlete_profile(ctx: Context[AppContext]) -> dict[str, Any]:
     """Get the athlete's physical profile: gender, age, runner type, target
     weekly mileage, experience. Use it to ground any training advice."""
     user_infos = await _client(ctx).get("/account/user-infos")
@@ -86,7 +86,7 @@ async def get_athlete_profile(ctx: Context) -> dict[str, Any]:
 
 
 @mcp.tool()
-async def get_athlete_paces(ctx: Context) -> list[dict[str, Any]]:
+async def get_athlete_paces(ctx: Context[AppContext]) -> list[dict[str, Any]]:
     """Get the athlete's current training pace references (VMA, thresholds,
     fundamental endurance, race paces...). Values are in seconds per km."""
     start, end = current_week_bounds()
@@ -98,7 +98,7 @@ async def get_athlete_paces(ctx: Context) -> list[dict[str, Any]]:
 
 @mcp.tool()
 async def get_training_calendar(
-    ctx: Context,
+    ctx: Context[AppContext],
     from_date: str | None = None,
     to_date: str | None = None,
     include_zones: bool = False,

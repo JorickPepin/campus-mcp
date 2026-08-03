@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -19,7 +19,7 @@ BANNED_KEYS = {"description", "coachAdvice", "nutritionTraining", "exercisesBloc
 
 def test_current_week_bounds_is_monday_utc():
     # Wednesday 2026-06-03 15:30 UTC -> week of Monday 2026-06-01 00:00 UTC
-    now = datetime(2026, 6, 3, 15, 30, tzinfo=timezone.utc)
+    now = datetime(2026, 6, 3, 15, 30, tzinfo=UTC)
     start, end = current_week_bounds(now)
     assert start == 1780272000000  # matches a real weekDate from the fixture
     assert end == start + WEEK_MS - 1
