@@ -16,7 +16,7 @@ Unofficial [MCP](https://modelcontextprotocol.io) server for the [Campus Coach](
 |------|-----------------|
 | `get_athlete_profile` | Gender, age, runner type, target mileage, experience |
 | `get_athlete_paces` | Current pace references (VMA, thresholds, fundamental endurance, race pace...), in seconds per km |
-| `get_training_calendar` | Training weeks between two ISO dates (`YYYY-MM-DD`): sessions with planned vs actual distance/duration, completion datetime and source activity id (Strava, Garmin...) when done. Without arguments, the whole currently active plan. `include_zones=True` adds the per-session pace-zone breakdown |
+| `get_training_calendar` | Training weeks between two ISO dates (`YYYY-MM-DD`): sessions with planned vs actual distance/duration, pace, heart rate, elevation, plus the athlete's own post-session feedback (rating, free-text comment, conditions) and the source activity id (Strava, Garmin...) when done. Without arguments, the whole currently active plan. `include_zones=True` adds the per-session pace-zone breakdown |
 
 The raw API responses are aggressively pruned (nutrition recipes, coach advice, exercise block trees are dropped): a week goes from ~150 KB to a few KB.
 
@@ -106,9 +106,9 @@ If you'd rather not keep tokens on disk (or you juggle several Campus accounts),
 - **Campus vs Strava** — combine with a Strava MCP server.
   - 🇫🇷 *"Croise mon plan Campus de cette semaine avec mes activités Strava réelles. Est-ce que j'ai respecté mes allures cibles ?"*
   - 🇬🇧 *"Cross-check this week's Campus plan against my actual Strava activities. Did I hit my target paces?"*
-- **Smart scheduling** — combine with calendar + weather tools.
-  - 🇫🇷 *"Planifie mes séances Campus de la semaine dans mon agenda, en évitant la pluie et les créneaux déjà occupés."*
-  - 🇬🇧 *"Schedule this week's Campus sessions in my calendar, avoiding rain and time slots already taken."*
+- **Smart scheduling** — combine with calendar.
+  - 🇫🇷 *"Planifie mes séances Campus de la semaine dans mon agenda, en évitant les créneaux déjà occupés."*
+  - 🇬🇧 *"Schedule this week's Campus sessions in my calendar, avoiding time slots already taken."*
 - **Plan adjustment**
   - 🇫🇷 *"J'ai une tension au tendon d'Achille. Lis mon plan Campus de la semaine et dis-moi comment l'adapter."*
   - 🇬🇧 *"My Achilles tendon feels tight. Read this week's Campus plan and tell me how to adapt it."*

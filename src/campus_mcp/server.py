@@ -107,7 +107,20 @@ async def get_training_calendar(
     two ISO dates (YYYY-MM-DD, UTC). Without dates, returns the entire
     *currently active* training plan; querying past plans requires explicit
     dates. Set include_zones=True only when you need the detailed pace-zone
-    structure of sessions (it is verbose); week-level summaries don't need it."""
+    structure of sessions (it is verbose); week-level summaries don't need it.
+
+    Done sessions carry a `feedback` object holding the athlete's own report,
+    which you should weigh at least as heavily as the raw numbers:
+
+    - `rating`: how the session felt against what the plan expected for that
+      session type. "as_expected" is the normal answer, not missing data.
+    - `comment`: free text, often explains away an anomaly the metrics alone
+      would flag (a treadmill run, a meal right before, a pacing partner).
+    - `conditions`: tags the athlete ticked at validation time, picked from
+      this closed list — adverse: MinorInjury, Sickness, Tiredness, PMS,
+      NoMotivation, PaceTooFast, LackOfTime, TechnicalIssue, Hot, Rain,
+      Terrain; favourable: IdealConditions, InShape, PeakMotivation,
+      GreatLegs."""
     client = _client(ctx)
 
     from_ms = iso_to_ms(from_date) if from_date is not None else None
