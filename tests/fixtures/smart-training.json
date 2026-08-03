@@ -81,12 +81,13 @@
                     "deviceName": "Fake Watch 123",
                     "averageRunCadenceInStepsPerMinute": 157,
                     "externalId": "0000000000",
-                    "sessionComment": "",
+                    "sessionComment": "sur tapis, description du ressenti: FC un peu haute",
+                    "sessionConditions": ["Hot", "Tiredness"],
                     "completionDate": 1780474137644,
                     "activeCalories": 200,
                     "distance": 2.9673,
                     "totalElevationGainInMeters": 0,
-                    "sessionRating": 0,
+                    "sessionRating": 2,
                     "averageHeartRateInBeatsPerMinute": 131
                 },
                 "trainingIndex": 0,
@@ -179,6 +180,50 @@
                     {"kind": "RECOVER", "duration": 120, "pace": {"value": 342}},
                     {"kind": "Z4", "duration": 120, "pace": {"value": 248}},
                     {"kind": "RECOVER", "duration": 720, "pace": {"value": 328}}
+                ]
+            },
+            {
+                "_t": "SmartTrailV2SessionWithStats",
+                "sport": "trailV2",
+                "name": "EF_35",
+                "description": "Lorem ipsum footing description placeholder that must never reach the LLM.",
+                "displayName": "Endurance Fondamentale",
+                "coachAdvice": "Lorem ipsum coach advice placeholder that must never reach the LLM.",
+                "test": false,
+                "importance": false,
+                "trainingType": "EF",
+                "trainingCategory": "trail_basic_endurance",
+                "exercisesBlocks": [],
+                "difficulty": 1,
+                "racingNote": {
+                    "_type": "models.smart_training.week.SmartTrailV2RacingNote",
+                    "_t": "SmartTrailV2RacingNote",
+                    "name": "Course à pied le matin",
+                    "source": "strava",
+                    "pace": 384.883507613282,
+                    "time": 2098,
+                    "deviceName": "Fake Watch 123",
+                    "averageRunCadenceInStepsPerMinute": 165,
+                    "externalId": "1111111111",
+                    "sessionComment": "",
+                    "sessionConditions": [],
+                    "completionDate": 1780560537753,
+                    "activeCalories": 412,
+                    "distance": 5.451,
+                    "totalElevationGainInMeters": 22,
+                    "sessionRating": 0,
+                    "averageHeartRateInBeatsPerMinute": 142
+                },
+                "trainingIndex": 2,
+                "weekDate": 1780272000000,
+                "status": "done",
+                "stats": {
+                    "_t": "SessionTrailV2ExpectedStats",
+                    "expectedDistance": 0,
+                    "expectedDuration": 2100
+                },
+                "paceZones": [
+                    {"kind": "Z2", "duration": 2100, "pace": {"value": 328}}
                 ]
             }
         ],

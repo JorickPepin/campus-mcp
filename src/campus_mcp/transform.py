@@ -6,6 +6,19 @@ from typing import Any
 WEEK_MS = 604_800_000
 DAY_MS = 86_400_000
 
+SESSION_RATING_AXIS = {
+    -2: "easier_than_expected",
+    0: "as_expected",
+    2: "harder_than_expected",
+}
+
+_REAL_METRICS = {
+    "averageHeartRateInBeatsPerMinute": "avg_heart_rate",
+    "averageRunCadenceInStepsPerMinute": "cadence_spm",
+    "totalElevationGainInMeters": "elevation_gain_m",
+    "activeCalories": "calories",
+}
+
 
 def iso_to_ms(date_str: str) -> int:
     """Parse an ISO date (YYYY-MM-DD) as midnight UTC, in ms."""
@@ -67,6 +80,13 @@ def slim_session(
             metrics["real_distance_km"] = round(note["distance"], 2)
         if "time" in note:
             metrics["real_duration_min"] = int(note["time"] / 60)
+        if "pace" in note:
+            # Same unit as estimatedPaces and zones[].pace, so the LLM can compare the
+            # session to its target without a round trip to the source service.
+            metrics["real_pace_sec_per_km"] = round(note["pace"])
+        for raw_key, out_key in _REAL_METRICS.items():
+            if raw_key in note:
+                metrics[out_key] = note[raw_key]
         if "completionDate" in note:
             slim["completed_at"] = datetime.fromtimestamp(
                 note["completionDate"] / 1000, tz=UTC
@@ -77,6 +97,16 @@ def slim_session(
             slim["activity_source"] = note["source"]
         if note.get("externalId"):
             slim["activity_id"] = note["externalId"]
+
+        feedback: dict[str, Any] = {}
+        if note.get("sessionComment"):  # "" is the common case: nothing to say
+            feedback["comment"] = note["sessionComment"]
+        if "sessionRating" in note:  # 0 is a real answer, don't test truthiness
+            feedback["rating"] = SESSION_RATING_AXIS.get(note["sessionRating"])
+        if note.get("sessionConditions"):  # [] means nothing worth flagging
+            feedback["conditions"] = note["sessionConditions"]
+        if feedback:
+            slim["feedback"] = feedback
     if include_zones:
         slim["zones"] = [
             {
