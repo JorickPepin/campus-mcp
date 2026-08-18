@@ -1,5 +1,6 @@
 """Unofficial MCP server for the Campus Coach training platform."""
 
+import asyncio
 import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -14,11 +15,11 @@ from campus_mcp.client import CampusClient
 from campus_mcp.transform import (
     DAY_MS,
     WEEK_MS,
+    build_calendar,
     current_week_bounds,
     extract_paces,
     extract_profile,
     iso_to_ms,
-    slim_week,
 )
 
 MAX_CHUNK_MS = 4 * WEEK_MS
@@ -77,6 +78,20 @@ async def _fetch_weeks(
     return weeks
 
 
+async def _fetch_logged(
+    client: CampusClient, start: int, end: int
+) -> list[dict[str, Any]]:
+    """Fetch out-of-plan sessions over [start, end], in a single call.
+
+    No 4-week chunking: that ceiling belongs to /smart-training, and this
+    endpoint happily answers a one-year window.
+    """
+    sessions: list[dict[str, Any]] = await client.get(
+        "/logged-sessions", params={"startDate": start, "endDate": end}
+    )
+    return [s for s in sessions if start <= (s.get("activityDate") or start) <= end]
+
+
 @mcp.tool()
 async def get_athlete_profile(ctx: Context[AppContext]) -> dict[str, Any]:
     """Get the athlete's physical profile: gender, age, runner type, target
@@ -109,6 +124,22 @@ async def get_training_calendar(
     dates. Set include_zones=True only when you need the detailed pace-zone
     structure of sessions (it is verbose); week-level summaries don't need it.
 
+    Each week holds two session lists. `sessions` is the plan. Beside it,
+    `out_of_plan_sessions` are runs the athlete logged outside the plan --
+    most often a planned session split across several activities, sometimes an
+    extra run. They have no `expected_*` metrics because nothing was planned
+    for them; that is normal, not missing data.
+
+    Read `weekStats` accordingly, and never total the sessions by hand:
+
+    - `expectedDistance` / `expectedDuration`: what the plan asked for.
+    - `realDistance` / `realDuration`: how much of *the plan* was run. Use these
+      to judge plan adherence.
+    - `outOfPlanDistance` / `outOfPlanDuration`: the rest.
+    - `totalRealDistance` / `totalRealDuration`: what the athlete actually ran.
+      Use these for training load, weekly volume, or any "how much did I run"
+      question. Distances are in km, durations in seconds.
+
     Done sessions carry a `feedback` object holding the athlete's own report,
     which you should weigh at least as heavily as the raw numbers:
 
@@ -120,7 +151,15 @@ async def get_training_calendar(
       this closed list — adverse: MinorInjury, Sickness, Tiredness, PMS,
       NoMotivation, PaceTooFast, LackOfTime, TechnicalIssue, Hot, Rain,
       Terrain; favourable: IdealConditions, InShape, PeakMotivation,
-      GreatLegs."""
+      GreatLegs.
+
+    Out-of-plan sessions carry `comment` and `conditions` the same way, but
+    their effort field is named `perceived_effort` (easy / moderate / hard) and
+    is not the same scale as `rating`. Nothing was planned for them, so the
+    athlete was asked plain difficulty, with no target to compare against. Read
+    it as absolute perceived effort: `easy` on a short easy run is the expected
+    answer and the sign of a well-run session — never treat it as evidence of
+    under-training or as a reason to suggest a harder session."""
     client = _client(ctx)
 
     from_ms = iso_to_ms(from_date) if from_date is not None else None
@@ -142,8 +181,11 @@ async def get_training_calendar(
         from_ms = from_ms if from_ms is not None else plan_start
         to_ms = to_ms if to_ms is not None else plan_end
 
-    weeks = await _fetch_weeks(client, from_ms, to_ms)
-    return [slim_week(week, include_zones=include_zones) for week in weeks]
+    weeks, logged = await asyncio.gather(
+        _fetch_weeks(client, from_ms, to_ms),
+        _fetch_logged(client, from_ms, to_ms),
+    )
+    return build_calendar(weeks, logged, include_zones=include_zones)
 
 
 def main() -> None:
