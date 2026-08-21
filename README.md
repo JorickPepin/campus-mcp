@@ -137,7 +137,7 @@ If you'd rather not keep tokens on disk (or you juggle several Campus accounts),
 
 **"Failed to spawn process: No such file or directory"** — your MCP client can't find `uvx` because it doesn't inherit your shell's `PATH`. Run `which uvx` and put the full path (e.g. `/Users/you/.local/bin/uvx`) in the `command` field.
 
-**"Saved tokens were rejected"** — the refresh token expired or was revoked (e.g. you logged out everywhere). Re-run `campus-mcp-auth`.
+**"Saved tokens were rejected"** — the refresh token expired or was revoked (e.g. you logged out everywhere). Re-run `campus-mcp-auth`. Note that Campus access tokens are only valid for 15 minutes: the server renews them on its own, so a long-running session is expected and does not need re-authentication.
 
 **Slow first start** — the first `uvx` invocation downloads and caches the package; later starts are instant. To pick up a new version of this server, run `uv cache prune` or reinstall.
 
