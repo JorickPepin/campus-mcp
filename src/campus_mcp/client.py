@@ -11,6 +11,8 @@ from campus_mcp.auth import TokenStore
 
 BASE_URL = "https://api.campus.coach"
 
+REFRESH_RETRY_DELAY = 0.5
+
 
 class CampusAuthError(Exception):
     """Raised when authentication against the Campus API definitively fails."""
@@ -112,28 +114,51 @@ class CampusClient:
                 )
             self._store_tokens(await resp.json())
 
-    async def _refresh(self, session: aiohttp.ClientSession) -> None:
-        rejected_refresh_token = self._refresh_token
+    async def _rotate(self, session: aiohttp.ClientSession) -> bool:
+        """Trade the refresh token for a new access token. True on success.
+
+        The endpoint needs the Authorization header even though the token it
+        carries is the expired one being replaced: Campus checks the signature,
+        not the expiry. Sending no header answers 401 MissingToken, which is
+        indistinguishable from a revoked refresh token -- so leave the header
+        in place, its absence makes refreshing impossible rather than merely
+        unreliable.
+        """
         async with session.put(
-            f"{BASE_URL}/account/refresh-token/{self._refresh_token}"
+            f"{BASE_URL}/account/refresh-token/{self._refresh_token}",
+            headers=self._headers(),
         ) as resp:
-            if resp.status < 400:
-                self._store_tokens(await resp.json())
+            if resp.status >= 400:
+                return False
+            self._store_tokens(await resp.json())
+            return True
+
+    async def _refresh(self, session: aiohttp.ClientSession) -> None:
+        stale_token = self._token
+        if await self._rotate(session):
+            return
+
+        # Token-store mode: a sibling server process (each MCP client spawns
+        # its own) may have refreshed a moment ago, or campus-mcp-auth may have
+        # been re-run. The file then already holds a working access token --
+        # the refresh token itself never rotates, only this one changes.
+        if self._store is not None:
+            tokens = self._store.load()
+            if tokens is not None and tokens["token"] != stale_token:
+                self._token = tokens["token"]
+                self._refresh_token = tokens["refreshToken"]
                 return
 
-        # Refresh token expired or revoked: fall back to a full login.
+        # A full login is both cheaper and more certain than a second attempt.
         if self._email and self._password:
             await self._login(session)
             return
 
-        # Token-store mode: a sibling server process (each MCP client spawns
-        # its own) may have rotated the tokens on disk since we loaded ours.
-        if self._store is not None:
-            tokens = self._store.load()
-            if tokens is not None and tokens["refreshToken"] != rejected_refresh_token:
-                self._token = tokens["token"]
-                self._refresh_token = tokens["refreshToken"]
-                return
+        # Nothing else to fall back on, so rule out a concurrent-refresh 404
+        # before declaring the saved tokens dead.
+        await asyncio.sleep(REFRESH_RETRY_DELAY)
+        if await self._rotate(session):
+            return
 
         raise CampusAuthError(
             "Saved tokens were rejected: run campus-mcp-auth to re-authenticate"
