@@ -16,9 +16,26 @@ Unofficial [MCP](https://modelcontextprotocol.io) server for the [Campus Coach](
 |------|-----------------|
 | `get_athlete_profile` | Gender, age, runner type, target mileage, experience |
 | `get_athlete_paces` | Current pace references (VMA, thresholds, fundamental endurance, race pace...), in seconds per km |
-| `get_training_calendar` | Training weeks between two ISO dates (`YYYY-MM-DD`): sessions with planned vs actual distance/duration, pace, heart rate, elevation, plus the athlete's own post-session feedback (rating, free-text comment, conditions) and the source activity id (Strava, Garmin...) when done. Without arguments, the whole currently active plan. `include_zones=True` adds the per-session pace-zone breakdown |
+| `get_training_calendar` | Training weeks between two ISO dates (`YYYY-MM-DD`): sessions with planned vs actual distance/duration, pace, heart rate, elevation, plus the athlete's own post-session feedback (rating, free-text comment, conditions) and the source activity id (Strava, Garmin...) when done. Also folds in sessions logged *outside* the plan, with recomputed weekly totals (see below). Without arguments, the whole currently active plan. `include_zones=True` adds the per-session pace-zone breakdown |
 
 The raw API responses are aggressively pruned (nutrition recipes, coach advice, exercise block trees are dropped): a week goes from ~150 KB to a few KB.
+
+### Out-of-plan sessions
+
+Campus lets you log runs that weren't in the plan (e.g. when you split a session across several activities). Those live in a separate part of the API and are counted nowhere in the plan's own weekly stats.
+
+`get_training_calendar` folds them back in. Each week carries an `out_of_plan_sessions` list alongside `sessions`, and `weekStats` distinguishes the two readings:
+
+| Key | Meaning |
+|-----|---------|
+| `expectedDistance` / `expectedDuration` | What the plan asked for |
+| `realDistance` / `realDuration` | How much of *the plan* was run — plan adherence |
+| `outOfPlanDistance` / `outOfPlanDuration` | Everything logged outside the plan |
+| `totalRealDistance` / `totalRealDuration` | What was actually run — training load, weekly volume |
+
+Distances are in km, durations in seconds.
+
+Their post-session feedback is reported under `perceived_effort` (`easy` / `moderate` / `hard`), **not** under `rating` like planned sessions. The two are different scales: `rating` is relative to what the plan asked for (`as_expected` and friends), while an out-of-plan session has no target to compare against, so the app asks plain difficulty. An imported easy run reporting `easy` is a well-run session, not an under-trained one.
 
 ## Setup (one time)
 

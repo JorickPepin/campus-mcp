@@ -3,9 +3,14 @@ from pathlib import Path
 
 import pytest
 
-FIXTURE = Path(__file__).parent / "fixtures" / "smart-training.json"
+FIXTURES = Path(__file__).parent / "fixtures"
 
 
 @pytest.fixture(scope="session")
 def weeks() -> list[dict]:
-    return json.loads(FIXTURE.read_text())
+    return json.loads((FIXTURES / "smart-training.json").read_text())
+
+
+@pytest.fixture(scope="session")
+def logged() -> list[dict]:
+    return json.loads((FIXTURES / "logged-sessions.json").read_text())
