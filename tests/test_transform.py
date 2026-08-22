@@ -16,7 +16,13 @@ from campus_mcp.transform import (
     slim_week,
 )
 
-BANNED_KEYS = {"description", "coachAdvice", "nutritionTraining", "exercisesBlocks"}
+# Never emitted, whatever the flags: these are the raw API nodes. The coach's
+# text does reach the output under include_coach_notes, but renamed and pruned,
+# so the raw keys are still a valid tripwire. `gearVariation` is the real nested
+# monstrosity -- 14% of the raw payload in video thumbnails and Mux ids.
+RAW_NODES = {"nutritionTraining", "exercisesBlocks", "gearVariation"}
+# Additionally absent when no flag is set.
+BANNED_KEYS = RAW_NODES | {"description", "coachAdvice"}
 
 
 def all_keys(node):
@@ -70,10 +76,13 @@ def test_iso_ms_roundtrip():
 
 def test_slim_session_mapping(weeks):
     session = weeks[0]["sessions"][0]  # EF_20, done
-    slim = slim_session(session, include_zones=True)
+    slim = slim_session(session, include_structure=True)
     assert slim["name"] == "EF_20"
+    assert slim["display_name"] == "Endurance Fondamentale"
     assert slim["type"] == "EF"
     assert slim["status"] == "done"
+    assert slim["difficulty"] == 1
+    assert slim["key_session"] is False
     assert slim["metrics"]["expected_duration_min"] == 20
     assert slim["metrics"]["real_distance_km"] == 2.97
     assert slim["metrics"]["real_duration_min"] == 20
@@ -90,7 +99,20 @@ def test_slim_session_mapping(weeks):
         "rating": "harder_than_expected",
         "conditions": ["Hot", "Tiredness"],
     }
-    assert slim["zones"] == [{"kind": "Z2", "duration": 1200, "pace": 328}]
+    assert slim["structure"] == [
+        {
+            "repeat": 1,
+            "steps": [
+                {
+                    "name": "EF_20",
+                    "role": "running",
+                    "duration_sec": 1200,
+                    "pace_label": "Endurance Fondamentale",
+                    "pace": 328,
+                }
+            ],
+        }
+    ]
 
 
 def test_slim_session_keeps_neutral_rating(weeks):
@@ -108,8 +130,91 @@ def test_slim_session_drops_racing_note_noise(weeks):
         assert noise not in dumped
 
 
-def test_slim_session_omits_zones_by_default(weeks):
-    assert "zones" not in slim_session(weeks[0]["sessions"][1])
+def test_slim_session_omits_structure_and_notes_by_default(weeks):
+    slim = slim_session(weeks[0]["sessions"][1])
+    assert "structure" not in slim
+    assert "coach_notes" not in slim
+
+
+def test_slim_session_keeps_repeat_count(weeks):
+    # The whole point. paceZones flattens this into two sample reps; the block
+    # says seven, and reading it as one would under-report the session 7-fold.
+    slim = slim_session(weeks[0]["sessions"][1], include_structure=True)
+    assert [b["repeat"] for b in slim["structure"]] == [7]
+    assert slim["structure"][0]["steps"] == [
+        {
+            "name": "S60_Plat_2",
+            "role": "running",
+            "duration_sec": 120,
+            "pace_label": "Seuil 60",
+            "pace": 248,
+        }
+    ]
+
+
+def test_structure_totals_match_expected_duration(weeks):
+    # The arithmetic that proves nothing is lost: sum(repeat x duration) over
+    # the blocks must land exactly on what the plan says the session lasts.
+    # paceZones sums to 1230s on this one, against an expected 4140.
+    session = weeks[0]["sessions"][3]  # Force_A42_700_1, road intervals
+    slim = slim_session(session, include_structure=True)
+    total = sum(
+        block["repeat"] * sum(step["duration_sec"] for step in block["steps"])
+        for block in slim["structure"]
+    )
+    assert total == session["stats"]["expectedDuration"] == 4140
+    assert [b["repeat"] for b in slim["structure"]] == [1, 3, 4, 1]
+    assert [s["role"] for b in slim["structure"] for s in b["steps"]] == [
+        "warm-up",
+        "running",
+        "recuperation",
+        "running",
+        "recuperation",
+        "recuperation",
+    ]
+
+
+def test_structure_multiplies_block_and_exercise_repeats(weeks):
+    # A strength exercise carries its own repeat count *inside* a block that
+    # repeats too: 3 x [Split Squat x10] is thirty squats, not three.
+    slim = slim_session(weeks[0]["sessions"][4], include_structure=True)
+    block = slim["structure"][0]
+    assert block["repeat"] == 3
+    squat = block["steps"][0]
+    assert squat["reps"] == 10
+    assert squat["role"] == "ppg"
+    # Counted in reps, not in time -- and the rest exercise is the other way round.
+    assert "duration_sec" not in squat
+    rest = block["steps"][-1]
+    assert rest["role"] == "recuperation"
+    assert rest["duration_sec"] == 60
+    assert "reps" not in rest  # repeat: 1 is not a repetition count
+
+
+def test_structure_keeps_gear_but_not_the_video_catalogue(weeks):
+    slim = slim_session(weeks[0]["sessions"][4], include_structure=True)
+    steps = [s for b in slim["structure"] for s in b["steps"]]
+    assert {s.get("gear") for s in steps} == {None, "rubber-band", "weights"}
+    dumped = json.dumps(slim)
+    for noise in ("datocms-assets", "muxPlaybackId", "difficultyVariations"):
+        assert noise not in dumped
+
+
+def test_structure_omitted_when_the_api_serves_no_blocks(weeks):
+    # EF_35 comes back with exercisesBlocks: []. Falling back to paceZones here
+    # would emit a sketch dressed up as a prescription; absence reads better.
+    slim = slim_session(weeks[0]["sessions"][2], include_structure=True)
+    assert "structure" not in slim
+
+
+def test_coach_notes_behind_their_flag(weeks):
+    slim = slim_session(weeks[0]["sessions"][1], include_coach_notes=True)
+    assert slim["coach_notes"] == {
+        "advice": weeks[0]["sessions"][1]["coachAdvice"],
+        "description": weeks[0]["sessions"][1]["description"],
+    }
+    # The raw nodes still never appear, whatever the flags.
+    assert RAW_NODES.isdisjoint(all_keys(slim))
 
 
 def test_slim_session_drops_real_metrics_when_not_done(weeks):
@@ -125,7 +230,7 @@ def test_slim_session_drops_real_metrics_when_not_done(weeks):
 
 
 def test_slim_week_bans_noise(weeks):
-    slim = slim_week(weeks[0], include_zones=True)
+    slim = slim_week(weeks[0], include_structure=True)
     assert slim["week_start"] == "2026-06-01"
     assert slim["weekStats"]["realDistance"] > 0
     assert slim["goalDuration"] == {"durationInWeeks": 18, "index": 12}
@@ -275,5 +380,12 @@ def test_build_calendar_without_out_of_plan_sessions(weeks):
 
 
 def test_build_calendar_bans_noise(weeks, logged):
-    calendar = build_calendar(weeks, logged, include_zones=True)
+    calendar = build_calendar(weeks, logged, include_structure=True)
     assert BANNED_KEYS.isdisjoint(all_keys(calendar))
+
+
+def test_build_calendar_bans_raw_nodes_even_with_every_flag(weeks, logged):
+    calendar = build_calendar(
+        weeks, logged, include_structure=True, include_coach_notes=True
+    )
+    assert RAW_NODES.isdisjoint(all_keys(calendar))

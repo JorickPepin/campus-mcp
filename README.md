@@ -16,15 +16,31 @@ Unofficial [MCP](https://modelcontextprotocol.io) server for the [Campus Coach](
 |------|-----------------|
 | `get_athlete_profile` | Gender, age, runner type, target mileage, experience |
 | `get_athlete_paces` | Current pace references (VMA, thresholds, fundamental endurance, race pace...), in seconds per km |
-| `get_training_calendar` | Training weeks between two ISO dates (`YYYY-MM-DD`): sessions with planned vs actual distance/duration, pace, heart rate, elevation, plus the athlete's own post-session feedback (rating, free-text comment, conditions) and the source activity id (Strava, Garmin...) when done. Also folds in sessions logged *outside* the plan, with recomputed weekly totals (see below). Without arguments, the whole currently active plan. `include_zones=True` adds the per-session pace-zone breakdown |
+| `get_training_calendar` | Training weeks, session by session: planned vs actual, the athlete's own feedback, and how each session is built. [Details below](#get_training_calendar) |
 
-The raw API responses are aggressively pruned (nutrition recipes, coach advice, exercise block trees are dropped): a week goes from ~150 KB to a few KB.
+The raw API responses are aggressively pruned — nutrition recipes, exercise video catalogues and the app's own rendering data are dropped. A week comes back at under 10% of the raw payload, and still under 20% with the full session structure.
 
-### Out-of-plan sessions
+### `get_training_calendar`
 
-Campus lets you log runs that weren't in the plan (e.g. when you split a session across several activities). Those live in a separate part of the API and are counted nowhere in the plan's own weekly stats.
+Without arguments, returns the whole currently active plan. Pass `from_date` and `to_date` (`YYYY-MM-DD`, UTC) for any other window, past plans included.
 
-`get_training_calendar` folds them back in. Each week carries an `out_of_plan_sessions` list alongside `sessions`, and `weekStats` distinguishes the two readings:
+Every session reports:
+
+- planned vs actual distance, duration and pace, plus heart rate, cadence, elevation and calories when the run came from a watch;
+- the athlete's own post-session `feedback` — rating, free-text comment, conditions;
+- `display_name` (the human title, e.g. *Force + Allure 42km*), `difficulty` (1-6) and `key_session`;
+- the source activity id (Strava, Garmin...) when done, to cross-reference against another MCP server.
+
+Two flags add the verbose parts, both off by default:
+
+| Flag | Adds |
+|------|------|
+| `include_structure` | How each session is actually built — warm-up, work intervals, recoveries, cool-down, and strength exercises with their reps and gear |
+| `include_coach_notes` | The coach's advice and the session's stated intent |
+
+#### Out-of-plan sessions
+
+Campus lets you log runs that weren't in the plan. They count nowhere in the plan's own weekly stats, so `get_training_calendar` folds them back in: each week gets an `out_of_plan_sessions` list beside `sessions`, and `weekStats` keeps the two readings apart (km, seconds):
 
 | Key | Meaning |
 |-----|---------|
@@ -33,9 +49,7 @@ Campus lets you log runs that weren't in the plan (e.g. when you split a session
 | `outOfPlanDistance` / `outOfPlanDuration` | Everything logged outside the plan |
 | `totalRealDistance` / `totalRealDuration` | What was actually run — training load, weekly volume |
 
-Distances are in km, durations in seconds.
-
-Their post-session feedback is reported under `perceived_effort` (`easy` / `moderate` / `hard`), **not** under `rating` like planned sessions. The two are different scales: `rating` is relative to what the plan asked for (`as_expected` and friends), while an out-of-plan session has no target to compare against, so the app asks plain difficulty. An imported easy run reporting `easy` is a well-run session, not an under-trained one.
+Their feedback comes under `perceived_effort` (`easy` / `moderate` / `hard`) rather than `rating`: nothing was planned, so there is no target to be relative to. An easy run reporting `easy` is a session well run, not an under-trained one.
 
 ## Setup (one time)
 

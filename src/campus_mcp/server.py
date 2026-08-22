@@ -116,13 +116,39 @@ async def get_training_calendar(
     ctx: Context[AppContext],
     from_date: str | None = None,
     to_date: str | None = None,
-    include_zones: bool = False,
+    include_structure: bool = False,
+    include_coach_notes: bool = False,
 ) -> list[dict[str, Any]]:
     """Get training weeks (planned sessions, planned vs actual stats) between
     two ISO dates (YYYY-MM-DD, UTC). Without dates, returns the entire
     *currently active* training plan; querying past plans requires explicit
-    dates. Set include_zones=True only when you need the detailed pace-zone
-    structure of sessions (it is verbose); week-level summaries don't need it.
+    dates.
+
+    Set include_structure=True to get how each session is actually built --
+    warm-up, intervals, recoveries, cool-down. Needed to answer anything about
+    what a session *is*; week-level volume questions don't need it. Under
+    `structure`, each block is a list of `steps` run `repeat` times:
+
+    - `repeat` appears at TWO levels. A block with `repeat: 3` holding a step
+      with `reps: 10` is thirty repetitions, not three. Multiply them.
+    - `role` is warm-up / running / recuperation / ppg. Never count
+      `recuperation` time as work; `ppg` is strength training, not running.
+    - `duration_sec` is per single pass of the step, before any repeat is
+      applied. A step with `reps` and no `duration_sec` is counted in
+      repetitions, not in time -- that is normal, not missing data.
+    - `pace` is in seconds per km, same unit as get_athlete_paces, so a
+      prescription can be compared directly against what was run.
+    - `structure` is absent when the API served no blocks for a session. Do not
+      infer the session was empty.
+
+    Set include_coach_notes=True for the coach's own advice and the session's
+    stated intent, under `coach_notes`. It is verbose free text, but it carries
+    intent that no metric does. Weigh it when judging whether a session was run
+    as meant.
+
+    Every session also carries `display_name` (the human title, e.g. "Force +
+    Allure 42km"), `difficulty` (1-6) and `key_session` (a pivotal session of
+    the plan -- missing one matters more than missing an easy run).
 
     Each week holds two session lists. `sessions` is the plan. Beside it,
     `out_of_plan_sessions` are runs the athlete logged outside the plan --
@@ -185,7 +211,12 @@ async def get_training_calendar(
         _fetch_weeks(client, from_ms, to_ms),
         _fetch_logged(client, from_ms, to_ms),
     )
-    return build_calendar(weeks, logged, include_zones=include_zones)
+    return build_calendar(
+        weeks,
+        logged,
+        include_structure=include_structure,
+        include_coach_notes=include_coach_notes,
+    )
 
 
 def main() -> None:
