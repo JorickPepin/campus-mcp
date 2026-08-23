@@ -40,6 +40,8 @@ _LOGGED_METRICS = {
     "activeCalories": "calories",
 }
 
+_TIME_UNITS = {"seconds": 1, "minutes": 60, "hours": 3600}
+
 
 def iso_to_ms(date_str: str) -> int:
     """Parse an ISO date (YYYY-MM-DD) as midnight UTC, in ms."""
@@ -118,8 +120,85 @@ def _feedback(
     return feedback
 
 
+def _duration_seconds(durations: list[dict[str, Any]] | None) -> int | None:
+    """Total a `durations` list, in seconds.
+
+    None rather than a wrong number in the two cases that warrant it: an empty
+    list is a strength exercise counted in reps, not in time, and an unknown
+    unit is not worth guessing at.
+    """
+    total = 0
+    for entry in durations or []:
+        unit: str = entry.get("timeUnit") or ""
+        factor = _TIME_UNITS.get(unit)
+        if factor is None:
+            return None
+        total += int(entry.get("value") or 0) * factor
+    return total or None
+
+
+def _step(exercise: dict[str, Any]) -> dict[str, Any]:
+    """Flatten one exercise down to what an LLM needs.
+
+    Three schemas share this shape -- SmartExercise (road), SmartPPGExercise
+    (strength) and SmartTrailV2Exercise (trail) -- and they agree on almost
+    nothing, so every key is emitted only when it carries a value rather than
+    assumed present. `pace.zoneKind` is deliberately ignored: it shows up on
+    barely a third of exercises, and mostly on the recovery ones.
+    """
+    step: dict[str, Any] = {"name": exercise.get("name")}
+    if exercise.get("exerciseType"):
+        # warm-up / running / recuperation / ppg. The only field that says
+        # which part of a session is work and which is rest.
+        step["role"] = exercise["exerciseType"]
+
+    duration = _duration_seconds(exercise.get("durations"))
+    if duration is not None:
+        step["duration_sec"] = duration
+    # A strength exercise carries its own repeat count *inside* a block that
+    # repeats too: 3 x [Split Squat x10] is thirty squats, not three.
+    reps = exercise.get("repeat")
+    if reps and reps > 1:
+        step["reps"] = reps
+
+    pace = exercise.get("pace") or {}
+    if pace.get("name"):
+        step["pace_label"] = pace["name"]
+    if pace.get("value"):
+        # Seconds per km, same unit as estimatedPaces and real_pace_sec_per_km,
+        # so the LLM can compare a prescription to what was actually run.
+        step["pace"] = pace["value"]
+
+    # The rest of gearVariation is video thumbnails and Mux playback ids: 14% of
+    # the raw payload, and worth nothing to a model.
+    gear = (exercise.get("gearVariation") or {}).get("gear")
+    if gear and gear != "nothing":
+        step["gear"] = gear
+    return step
+
+
+def _structure(session: dict[str, Any]) -> list[dict[str, Any]]:
+    """The session as prescribed: blocks, each run `repeat` times.
+
+    This is what `paceZones` only sketches -- and often not even that. The API
+    serves an empty `paceZones` for every endurance run and a truncated one for
+    interval sessions, so there is nothing worth falling back to when a session
+    carries no blocks; the caller omits the key instead.
+    """
+    return [
+        {
+            "repeat": block.get("repeat") or 1,
+            "steps": [_step(e) for e in block.get("exercises") or []],
+        }
+        for block in session.get("exercisesBlocks") or []
+    ]
+
+
 def slim_session(
-    session: dict[str, Any], *, include_zones: bool = False
+    session: dict[str, Any],
+    *,
+    include_structure: bool = False,
+    include_coach_notes: bool = False,
 ) -> dict[str, Any]:
     stats = session.get("stats", {})
     metrics: dict[str, Any] = {
@@ -128,8 +207,12 @@ def slim_session(
     }
     slim: dict[str, Any] = {
         "name": session.get("name"),
+        "display_name": session.get("displayName"),
         "type": session.get("trainingType"),
         "status": session.get("status"),
+        # 1-6, and the scale `feedback.rating` is relative to.
+        "difficulty": session.get("difficulty"),
+        "key_session": session.get("importance"),
         "metrics": metrics,
     }
 
@@ -163,15 +246,18 @@ def slim_session(
         )
         if feedback:
             slim["feedback"] = feedback
-    if include_zones:
-        slim["zones"] = [
-            {
-                "kind": zone.get("kind"),
-                "duration": zone.get("duration"),
-                "pace": zone.get("pace", {}).get("value"),
-            }
-            for zone in session.get("paceZones", [])
-        ]
+    if include_structure:
+        structure = _structure(session)
+        if structure:  # no blocks: say nothing rather than sketch from paceZones
+            slim["structure"] = structure
+    if include_coach_notes:
+        notes = {}
+        if session.get("coachAdvice"):
+            notes["advice"] = session["coachAdvice"]
+        if session.get("description"):
+            notes["description"] = session["description"]
+        if notes:
+            slim["coach_notes"] = notes
     return slim
 
 
@@ -224,14 +310,23 @@ def slim_logged_session(session: dict[str, Any]) -> dict[str, Any]:
     return slim
 
 
-def slim_week(week: dict[str, Any], *, include_zones: bool = False) -> dict[str, Any]:
+def slim_week(
+    week: dict[str, Any],
+    *,
+    include_structure: bool = False,
+    include_coach_notes: bool = False,
+) -> dict[str, Any]:
     week_date = week.get("weekDate")
     return {
         "week_start": ms_to_iso(week_date) if week_date is not None else None,
         "weekStats": week.get("weekStats", {}),
         "goalDuration": week.get("goalDuration", {}),
         "sessions": [
-            slim_session(s, include_zones=include_zones)
+            slim_session(
+                s,
+                include_structure=include_structure,
+                include_coach_notes=include_coach_notes,
+            )
             for s in week.get("sessions", [])
         ],
     }
@@ -264,7 +359,8 @@ def build_calendar(
     weeks: list[dict[str, Any]],
     logged: list[dict[str, Any]],
     *,
-    include_zones: bool = False,
+    include_structure: bool = False,
+    include_coach_notes: bool = False,
 ) -> list[dict[str, Any]]:
     """Assemble the calendar, folding out-of-plan sessions into their week.
 
@@ -279,7 +375,11 @@ def build_calendar(
     calendar = []
     for week in weeks:
         week_logged = by_week.pop(week.get("weekDate"), [])
-        slim = slim_week(week, include_zones=include_zones)
+        slim = slim_week(
+            week,
+            include_structure=include_structure,
+            include_coach_notes=include_coach_notes,
+        )
         slim["weekStats"] = _with_totals(slim["weekStats"], week_logged)
         slim["out_of_plan_sessions"] = [slim_logged_session(s) for s in week_logged]
         calendar.append(slim)
