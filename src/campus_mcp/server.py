@@ -174,7 +174,7 @@ async def get_training_calendar(
     - `comment`: free text, often explains away an anomaly the metrics alone
       would flag (a treadmill run, a meal right before, a pacing partner).
     - `conditions`: tags the athlete ticked at validation time, picked from
-      this closed list — adverse: MinorInjury, Sickness, Tiredness, PMS,
+      this closed list. Adverse: MinorInjury, Sickness, Tiredness, PMS,
       NoMotivation, PaceTooFast, LackOfTime, TechnicalIssue, Hot, Rain,
       Terrain; favourable: IdealConditions, InShape, PeakMotivation,
       GreatLegs.
@@ -184,7 +184,7 @@ async def get_training_calendar(
     is not the same scale as `rating`. Nothing was planned for them, so the
     athlete was asked plain difficulty, with no target to compare against. Read
     it as absolute perceived effort: `easy` on a short easy run is the expected
-    answer and the sign of a well-run session — never treat it as evidence of
+    answer and the sign of a well-run session; never treat it as evidence of
     under-training or as a reason to suggest a harder session."""
     client = _client(ctx)
 

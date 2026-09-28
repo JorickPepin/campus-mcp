@@ -18,7 +18,7 @@ Unofficial [MCP](https://modelcontextprotocol.io) server for the [Campus Coach](
 | `get_athlete_paces` | Current pace references (VMA, thresholds, fundamental endurance, race pace...), in seconds per km |
 | `get_training_calendar` | Training weeks, session by session: planned vs actual, the athlete's own feedback, and how each session is built. [Details below](#get_training_calendar) |
 
-The raw API responses are aggressively pruned — nutrition recipes, exercise video catalogues and the app's own rendering data are dropped. A week comes back at under 10% of the raw payload, and still under 20% with the full session structure.
+The raw API responses are aggressively pruned: nutrition recipes, exercise video catalogues and the app's own rendering data are dropped. A week comes back at under 10% of the raw payload, and still under 20% with the full session structure.
 
 ### `get_training_calendar`
 
@@ -27,7 +27,7 @@ Without arguments, returns the whole currently active plan. Pass `from_date` and
 Every session reports:
 
 - planned vs actual distance, duration and pace, plus heart rate, cadence, elevation and calories when the run came from a watch;
-- the athlete's own post-session `feedback` — rating, free-text comment, conditions;
+- the athlete's own post-session `feedback`: rating, free-text comment, conditions;
 - `display_name` (the human title, e.g. *Force + Allure 42km*), `difficulty` (1-6) and `key_session`;
 - the source activity id (Strava, Garmin...) when done, to cross-reference against another MCP server.
 
@@ -35,7 +35,7 @@ Two flags add the verbose parts, both off by default:
 
 | Flag | Adds |
 |------|------|
-| `include_structure` | How each session is actually built — warm-up, work intervals, recoveries, cool-down, and strength exercises with their reps and gear |
+| `include_structure` | How each session is actually built: warm-up, work intervals, recoveries, cool-down, and strength exercises with their reps and gear |
 | `include_coach_notes` | The coach's advice and the session's stated intent |
 
 #### Out-of-plan sessions
@@ -45,9 +45,9 @@ Campus lets you log runs that weren't in the plan. They count nowhere in the pla
 | Key | Meaning |
 |-----|---------|
 | `expectedDistance` / `expectedDuration` | What the plan asked for |
-| `realDistance` / `realDuration` | How much of *the plan* was run — plan adherence |
+| `realDistance` / `realDuration` | How much of *the plan* was run (plan adherence) |
 | `outOfPlanDistance` / `outOfPlanDuration` | Everything logged outside the plan |
-| `totalRealDistance` / `totalRealDuration` | What was actually run — training load, weekly volume |
+| `totalRealDistance` / `totalRealDuration` | What was actually run (training load, weekly volume) |
 
 Their feedback comes under `perceived_effort` (`easy` / `moderate` / `hard`) rather than `rating`: nothing was planned, so there is no target to be relative to. An easy run reporting `easy` is a session well run, not an under-trained one.
 
@@ -65,7 +65,7 @@ You'll be prompted for your Campus email and password. They are only used to log
 
 To check later that the saved tokens still work: `campus-mcp-auth --verify`.
 
-**2. Register the server in your MCP client** — no credentials needed:
+**2. Register the server in your MCP client**, no credentials needed:
 
 ### Claude Desktop
 
@@ -134,10 +134,10 @@ If you'd rather not keep tokens on disk (or you juggle several Campus accounts),
 
 ## Example prompts
 
-- **Campus vs Strava** — combine with a Strava MCP server.
+- **Campus vs Strava**: combine with a Strava MCP server.
   - 🇫🇷 *"Croise mon plan Campus de cette semaine avec mes activités Strava réelles. Est-ce que j'ai respecté mes allures cibles ?"*
   - 🇬🇧 *"Cross-check this week's Campus plan against my actual Strava activities. Did I hit my target paces?"*
-- **Smart scheduling** — combine with calendar.
+- **Smart scheduling**: combine with calendar.
   - 🇫🇷 *"Planifie mes séances Campus de la semaine dans mon agenda, en évitant les créneaux déjà occupés."*
   - 🇬🇧 *"Schedule this week's Campus sessions in my calendar, avoiding time slots already taken."*
 - **Plan adjustment**
@@ -149,13 +149,13 @@ If you'd rather not keep tokens on disk (or you juggle several Campus accounts),
 
 ## Troubleshooting
 
-**"Failed to spawn process: No such file or directory"** — your MCP client can't find `uvx` because it doesn't inherit your shell's `PATH`. Run `which uvx` and put the full path (e.g. `/Users/you/.local/bin/uvx`) in the `command` field.
+**"Failed to spawn process: No such file or directory"**: your MCP client can't find `uvx` because it doesn't inherit your shell's `PATH`. Run `which uvx` and put the full path (e.g. `/Users/you/.local/bin/uvx`) in the `command` field.
 
-**"Saved tokens were rejected"** — the refresh token expired or was revoked (e.g. you logged out everywhere). Re-run `campus-mcp-auth`. Note that Campus access tokens are only valid for 15 minutes: the server renews them on its own, so a long-running session is expected and does not need re-authentication.
+**"Saved tokens were rejected"**: the refresh token expired or was revoked (e.g. you logged out everywhere). Re-run `campus-mcp-auth`. Note that Campus access tokens are only valid for 15 minutes: the server renews them on its own, so a long-running session is expected and does not need re-authentication.
 
-**Slow first start** — the first `uvx` invocation downloads and caches the package; later starts are instant. To pick up a new version of this server, run `uv cache prune` or reinstall.
+**Slow first start**: the first `uvx` invocation downloads and caches the package; later starts are instant. To pick up a new version of this server, run `uv cache prune` or reinstall.
 
-**Logs** — Claude Desktop writes the server's stderr to `~/Library/Logs/Claude/mcp-server-campus.log` (macOS) or `%APPDATA%\Claude\logs\` (Windows).
+**Logs**: Claude Desktop writes the server's stderr to `~/Library/Logs/Claude/mcp-server-campus.log` (macOS) or `%APPDATA%\Claude\logs\` (Windows).
 
 ## Development
 
