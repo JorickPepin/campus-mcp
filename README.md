@@ -4,6 +4,12 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
+> [!CAUTION]
+>
+> **No longer maintained.** I don't use Campus Coach anymore, so I can't test
+> against their API, which may change at any time. The code is MIT-licensed:
+> feel free to fork it and carry it on.
+
 Unofficial [MCP](https://modelcontextprotocol.io) server for the [Campus Coach](https://www.campus.coach) running/trail training platform. It lets any MCP client (Claude Desktop, Claude Code, ...) read your training plan, your pace references and your athlete profile.
 
 > [!WARNING]
